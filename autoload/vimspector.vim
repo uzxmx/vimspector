@@ -220,6 +220,14 @@ function! vimspector#SetVariableValue( ... ) abort
   endif
 endfunction
 
+function! vimspector#AddDataBreakpoint( ... ) abort
+  if !s:Enabled()
+    return
+  endif
+  " TODO: how to set options?
+  py3 _vimspector_session.AddDataBreakpoint( {} )
+endfunction
+
 function! vimspector#DeleteWatch() abort
   if !s:Enabled()
     return

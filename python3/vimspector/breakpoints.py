@@ -45,6 +45,7 @@ class ProjectBreakpoints( object ):
     self._func_breakpoints = []
     self._exception_breakpoints = None
     self._configured_breakpoints = {}
+    self._data_breakponts = []
 
     # FIXME: Remove this. Remove breakpoints nonesense from code.py
     self._breakpoints_handler = None
@@ -270,6 +271,18 @@ class ProjectBreakpoints( object ):
 
     # TODO: We don't really have aanything to update here, but if we're going to
     # have a UI list of them we should update that at this point
+    # but note that while debugging, this is when we actually _send_ the
+    # breakpoints.
+    self.UpdateUI()
+
+
+  def AddDataBreakpoint( self, dataId, options ):
+    self._data_breakponts.append( {
+      'state': 'ENABLED',
+      'dataId': dataId,
+      'options': options,
+    } )
+
     self.UpdateUI()
 
 
@@ -402,6 +415,27 @@ class ProjectBreakpoints( object ):
         failure_handler = response_received
       )
 
+    if self._data_breakponts and self._server_capabilities[
+      'supportsDataBreakpoints' ]:
+      awaiting += 1
+      breakpoints = []
+      for bp in self._data_breakponts:
+        if bp[ 'state' ] != 'ENABLED':
+          continue
+        data_bp = {}
+        data_bp.update( bp[ 'options' ] )
+        data_bp[ 'dataId' ] = bp[ 'dataId' ]
+        breakpoints.append( data_bp )
+
+      self._connection.DoRequest(
+        lambda msg: response_handler( None, None ),
+        {
+          'command': 'setDataBreakpoints',
+          'arguments': breakpoints,
+        },
+        failure_handler = response_received
+      )
+
     if self._exception_breakpoints:
       awaiting = awaiting + 1
       self._connection.DoRequest(
@@ -493,6 +527,11 @@ class ProjectBreakpoints( object ):
                            sign,
                            file_name,
                            bp[ 'line' ] )
+
+    # TODO could/should we show a sign in the variables view when there's a data
+    # brakpoint on the variable? Not sure how best to actually do that, but
+    # maybe the variable view can pass that info when calling AddDataBreakpoint,
+    # such as the variablesReference/name
 
 
   def _SignToLine( self, file_name, bp ):

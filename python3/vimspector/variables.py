@@ -580,6 +580,33 @@ class VariablesView( object ):
     }, failure_handler = failure_handler )
 
 
+  def GetDataBreakpointInfo( self,
+                             then,
+                             buf = None,
+                             line_num = None ):
+    variable: Variable
+    view: View
+
+    if not self._server_capabilities.get( 'supportsDataBreakpoints' ):
+      return None
+
+    variable, view = self._GetVariable( buf, line_num )
+    if variable is None:
+      return None
+
+    arguments = {
+      'name': variable.variable[ 'name' ],
+    }
+    if variable.IsContained():
+      arguments[ 'variablesReference' ] = (
+        variable.container.VariablesReference() )
+
+    self._connection.DoRequest( lambda msg: then( msg[ 'body' ] ), {
+      'command': 'dataBreakpointInfo',
+      'arguments': arguments,
+    } )
+
+
 
   def _DrawVariables( self, view, variables, indent, is_short = False ):
     assert indent > 0
