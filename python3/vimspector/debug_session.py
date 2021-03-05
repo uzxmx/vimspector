@@ -1049,6 +1049,10 @@ class DebugSession( object ):
     #
     def handle_initialize_response( msg ):
       self._server_capabilities = msg.get( 'body' ) or {}
+      self._outputView.Print(
+        'server',
+        'Server Capabilities:\n' + json.dumps( self._server_capabilities,
+                                               indent = 2 ) )
       self._breakpoints.SetServerCapabilities( self._server_capabilities )
       self._variablesView.SetServerCapabilities( self._server_capabilities )
       self._Launch()

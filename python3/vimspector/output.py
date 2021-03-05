@@ -64,8 +64,8 @@ class OutputView( object ):
     self._api_prefix = api_prefix
     VIEWS.add( self )
 
-  def Print( self, categroy, text ):
-    self._Print( 'server', text.splitlines() )
+  def Print( self, category, text ):
+    self._Print( category, text.splitlines() )
 
   def OnOutput( self, event ):
     category = CategoryToBuffer( event.get( 'category' ) or 'output' )
