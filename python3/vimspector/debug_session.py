@@ -664,7 +664,19 @@ class DebugSession( object ):
     mode = settings.Get( 'ui_mode' )
 
     if mode == 'auto':
-      mode = 'vertical' if vim.options[ 'columns' ] < 160 else 'horizontal'
+      # Go vertical if there isn't enough horizontal space for at least:
+      #  the left bar width
+      #  + the code min width
+      #  + the terminal min width
+      #  + enough space for a sign column and number column?
+      min_width = ( settings.Int( 'sidebar_width' )
+                    + 1 + 2 + 3
+                    + settings.Int( 'code_minwidth' )
+                    + 1 + settings.Int( 'terminal_minwidth' ) )
+
+      mode = ( 'vertical'
+               if vim.options[ 'columns' ] < min_width
+               else 'horizontal' )
 
     if mode == 'vertical':
       self._SetUpUIVertical()

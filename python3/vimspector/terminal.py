@@ -30,7 +30,9 @@ def LaunchTerminal( api_prefix,
       # (this gives more vertical space, which becomes at at premium)
       vim.vars[ 'vimspector_session_windows' ][ 'mode' ] == 'horizontal' or
       vim.options[ 'columns' ] >= (
-        settings.Int( 'terminal_maxwidth' ) + settings.Int( 'code_minwidth' )
+        settings.Int( 'terminal_maxwidth' ) +
+          settings.Int( 'code_minwidth' ) +
+          1 # for the split decoration
       )
     ),
     'norestore': 1,
