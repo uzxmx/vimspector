@@ -23,7 +23,16 @@ def LaunchTerminal( api_prefix,
   env = params.get( 'env' ) or {}
 
   term_options = {
-    'vertical': 1,
+    # Use a vsplit in widw mode, and a horizontal split in narrow mode
+    'vertical': (
+      # Use a vsplit if we're in horizontal mode, or if we're in vertical mode,
+      # but there's enough space for the code and the terminal horizontally
+      # (this gives more vertical space, which becomes at at premium)
+      vim.vars[ 'vimspector_session_windows' ][ 'mode' ] == 'horizontal' or
+      vim.options[ 'columns' ] >= (
+        settings.Int( 'terminal_maxwidth' ) + settings.Int( 'code_minwidth' )
+      )
+    ),
     'norestore': 1,
     'cwd': cwd,
     'env': env,
@@ -50,13 +59,23 @@ def LaunchTerminal( api_prefix,
     # If we're making a vertical split from the code window, make it no more
     # than 80 columns and no fewer than 10. Also try and keep the code window
     # at least 82 columns
-    if term_options[ 'vertical' ] and not term_options.get( 'curwin', 0 ):
+    if term_options.get( 'curwin', 0 ):
+      pass
+    elif term_options[ 'vertical' ]:
       term_options[ 'term_cols' ] = max(
         min ( int( vim.eval( 'winwidth( 0 )' ) )
                    - settings.Int( 'code_minwidth' ),
               settings.Int( 'terminal_maxwidth' ) ),
         settings.Int( 'terminal_minwidth' )
       )
+    else:
+      term_options[ 'term_rows' ] = max(
+        min ( int( vim.eval( 'winheight( 0 )' ) )
+                   - settings.Int( 'code_minheight' ),
+              settings.Int( 'terminal_maxheight' ) ),
+        settings.Int( 'terminal_minheight' )
+      )
+
 
     buffer_number = int(
       utils.Call(
