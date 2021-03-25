@@ -1190,9 +1190,10 @@ class DebugSession( object ):
     self._on_init_complete_handlers = []
 
     self._logger.debug( "LAUNCH!" )
-    self._launch_config = {}
-    self._launch_config.update( self._adapter.get( 'configuration', {} ) )
-    self._launch_config.update( self._configuration[ 'configuration' ] )
+    if self._launch_config is None:
+      self._launch_config = {}
+      self._launch_config.update( self._adapter.get( 'configuration', {} ) )
+      self._launch_config.update( self._configuration[ 'configuration' ] )
 
     request = self._configuration.get(
       'remote-request',
