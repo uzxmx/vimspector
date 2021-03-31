@@ -34,13 +34,24 @@ class ServerBreakpointHandler( object ):
     pass
 
 
+# FIXME: THis really should be project scope and not associated with a debug
+# session. Breakpoints set by the user should be independent and breakpoints for
+# the current active session should be associated with the session when they are
+# in use.
+#
+# Questions include:
+#  1. what happens if we set/chnage a breakpiont in session #2 while session #1
+#  is active ? Maybe we re-send the breakpoints to _all_ active sessions?
+#
+# More...
 class ProjectBreakpoints( object ):
-  def __init__( self ):
+  def __init__( self, session_id ):
     self._connection = None
-    self._logger = logging.getLogger( __name__ )
-    utils.SetUpLogging( self._logger )
+    self._logger = logging.getLogger( __name__ + '.' + str( session_id ) )
+    utils.SetUpLogging( self._logger, session_id )
 
-    # These are the user-entered breakpoints.
+    # These are the user-entered breakpoints. NOTE: if updating this, also
+    # update Copy()
     self._line_breakpoints = defaultdict( list )
     self._func_breakpoints = []
     self._exception_breakpoints = None
@@ -90,6 +101,12 @@ class ProjectBreakpoints( object ):
 
     # FIXME: If the adapter type changes, we should probably forget this ?
 
+
+  def Copy( self, other: 'ProjectBreakpoints' ):
+    self._line_breakpoints = dict( other._line_breakpoints )
+    self._func_breakpoints = list( other._func_breakpoints )
+    if other._exception_breakpoints is not None:
+      self._exception_breakpoints = dict( other._exception_breakpoints )
 
   def BreakpointsAsQuickFix( self ):
     # FIXME: Handling of breakpoints is a mess, split between _codeView and this

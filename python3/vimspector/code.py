@@ -20,20 +20,20 @@ from collections import defaultdict
 
 from vimspector import utils, terminal, signs
 
+NEXT_SIGN_ID = 1
+
 
 class CodeView( object ):
-  def __init__( self, window, api_prefix ):
+  def __init__( self, session_id, window, api_prefix ):
     self._window = window
     self._api_prefix = api_prefix
 
     self._terminal = None
     self.current_syntax = None
 
-    self._logger = logging.getLogger( __name__ )
+    self._logger = logging.getLogger( __name__ + '.' + str( session_id ) )
     utils.SetUpLogging( self._logger )
 
-    # FIXME: This ID is by group, so should be module scope
-    self._next_sign_id = 1
     self._breakpoints = defaultdict( list )
     self._signs = {
       'vimspectorPC': None,
@@ -92,8 +92,9 @@ class CodeView( object ):
     self._UndisplayPC( clear_pc = False )
 
     # FIXME: Do we relly need to keep using up IDs ?
-    self._signs[ 'vimspectorPC' ] = self._next_sign_id
-    self._next_sign_id += 1
+    global NEXT_SIGN_ID
+    self._signs[ 'vimspectorPC' ] = NEXT_SIGN_ID
+    NEXT_SIGN_ID += 1
 
     sign = 'vimspectorPC'
     # If there's also a breakpoint on this line, use vimspectorPCBP
@@ -247,8 +248,9 @@ class CodeView( object ):
         if 'line' not in breakpoint:
           continue
 
-        sign_id = self._next_sign_id
-        self._next_sign_id += 1
+        global NEXT_SIGN_ID
+        sign_id = NEXT_SIGN_ID
+        NEXT_SIGN_ID += 1
         self._signs[ 'breakpoints' ].append( sign_id )
         if utils.BufferExists( file_name ):
           signs.PlaceSign( sign_id,

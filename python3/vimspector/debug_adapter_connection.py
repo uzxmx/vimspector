@@ -30,8 +30,8 @@ class PendingRequest( object ):
 
 class DebugAdapterConnection( object ):
   def __init__( self, handlers, session_id, send_func ):
-    self._logger = logging.getLogger( __name__ )
-    utils.SetUpLogging( self._logger )
+    self._logger = logging.getLogger( __name__ + '.' + str( session_id ) )
+    utils.SetUpLogging( self._logger, session_id )
 
     self._Write = send_func
     self._SetState( 'READ_HEADER' )

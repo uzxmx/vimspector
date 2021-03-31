@@ -26,11 +26,22 @@ endif
 
 function! vimspector#internal#state#Reset() abort
   try
-    py3 import vim
-    py3 _vimspector_session =  __import__(
-          \ "vimspector",
-          \ fromlist=[ "session_manager" ] ).session_manager.Get().NewSession(
-          \   vim.eval( 's:prefix' ) )
+    py3 <<EOF
+
+import vim
+
+_vimspector_session_man = __import__(
+  "vimspector",
+  fromlist=[ "session_manager" ] ).session_manager.Get()
+
+# Deprecated
+_vimspector_session = _vimspector_session_man.NewSession(
+  vim.eval( 's:prefix' ) )
+
+def _VimspectorSession( session_id ):
+  return _vimspector_session_man.GetSession( int( session_id ) )
+
+EOF
   catch /.*/
     echohl WarningMsg
     echom 'Exception while loading vimspector:' v:exception
@@ -46,6 +57,22 @@ endfunction
 function! vimspector#internal#state#GetAPIPrefix() abort
   return s:prefix
 endfunction
+
+function! vimspector#internal#state#SwitchToSession( id ) abort
+  py3 _vimspector_session = _VimspectorSession( vim.eval( 'a:id' ) )
+endfunction
+
+
+function! vimspector#internal#state#OnTabEnter() abort
+  py3 <<EOF
+session = _vimspector_session_man.SessionForTab(
+  int( vim.eval( 'tabpagenr()' ) ) )
+
+if session is not None:
+  _vimspector_session = session
+EOF
+endfunction
+
 
 " Boilerplate {{{
 let &cpoptions=s:save_cpo

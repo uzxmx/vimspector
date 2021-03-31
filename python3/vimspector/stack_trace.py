@@ -86,8 +86,8 @@ class StackTraceView( object ):
   _line_to_thread = typing.Dict[ int, Thread ]
 
   def __init__( self, session, win ):
-    self._logger = logging.getLogger( __name__ )
-    utils.SetUpLogging( self._logger )
+    self._logger = logging.getLogger( __name__ + '.' + str( session.session_id ) )
+    utils.SetUpLogging( self._logger, session.session_id )
 
     self._buf = win.buffer
     self._session = session
@@ -104,7 +104,10 @@ class StackTraceView( object ):
     # FIXME: This ID is by group, so should be module scope
     self._next_sign_id = 1
 
-    utils.SetUpHiddenBuffer( self._buf, 'vimspector.StackTrace' )
+    utils.SetUpHiddenBuffer(
+      self._buf,
+      utils.BufferNameForSession( 'vimspector.StackTrace',
+                                  self._session.session_id ) )
     utils.SetUpUIWindow( win )
 
     mappings = settings.Dict( 'mappings' )[ 'stack_trace' ]
@@ -562,7 +565,10 @@ class StackTraceView( object ):
 
         buf = utils.BufferForFile( buf_name )
         self._scratch_buffers.append( buf )
-        utils.SetUpHiddenBuffer( buf, buf_name )
+        utils.SetUpHiddenBuffer( buf,
+                                 utils.BufferNameForSession(
+                                   buf_name,
+                                   self._session.session_id ) )
         source[ 'path' ] = buf_name
         with utils.ModifiableScratchBuffer( buf ):
           utils.SetBufferContents( buf, msg[ 'body' ][ 'content' ] )

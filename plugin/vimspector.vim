@@ -141,6 +141,7 @@ augroup END
 augroup Vimspector
   autocmd!
   autocmd BufNew * call vimspector#OnBufferCreated( expand( '<afile>' ) )
+  autocmd TabEnter * call vimspector#internal#state#OnTabEnter()
 augroup END
 
 " boilerplate {{{
