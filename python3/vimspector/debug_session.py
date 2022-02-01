@@ -404,6 +404,9 @@ class DebugSession( object ):
       self._outputView.ConnectionUp( self._connection )
       self._breakpoints.ConnectionUp( self._connection )
 
+      if self._disassemblyView:
+        self._disassemblyView.ConnectionUp( self._connection )
+
       class Handler( breakpoints.ServerBreakpointHandler ):
         def __init__( self, codeView ):
           self.codeView = codeView
@@ -1106,6 +1109,8 @@ class DebugSession( object ):
       self._variablesView.Clear()
 
     if not self._codeView.SetCurrentFrame( frame ):
+      if self._disassemblyView:
+        self._disassemblyView.Clear()
       return False
 
     if self._disassemblyView:
