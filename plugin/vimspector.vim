@@ -63,6 +63,10 @@ nnoremap <silent> <Plug>VimspectorStepInto
 nnoremap <silent> <Plug>VimspectorStepOut
       \ :<c-u>call vimspector#StepOut()<CR>
 
+nnoremap <silent> <Plug>VimspectorToggleSteppingDirection
+      \ :<c-u>call vimspector#ToggleSteppingDirection()<CR>
+
+
 nnoremap <silent> <Plug>VimspectorRunToCursor
       \ :<c-u>call vimspector#RunToCursor()<CR>
 

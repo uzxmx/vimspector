@@ -192,6 +192,13 @@ function! vimspector#StepOut() abort
   py3 _vimspector_session.StepOut()
 endfunction
 
+function! vimspector#ToggleSteppingDirection() abort
+  if !s:Enabled()
+    return
+  endif
+  py3 _vimspector_session.ToggleSteppingDirection()
+endfunction
+
 function! vimspector#Continue() abort
   if !s:Enabled()
     return
