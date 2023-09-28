@@ -78,6 +78,8 @@ class DebugSession( object ):
     self._adapter = None
     self._launch_config = None
 
+    self._no_debug = False
+
     self._ResetServerState()
 
   def _ResetServerState( self ):
@@ -127,6 +129,8 @@ class DebugSession( object ):
     if launch_variables is None:
       launch_variables = {}
 
+    self._logger.info('adhoc_configurations')
+    self._logger.info(adhoc_configurations)
     self._logger.info( "User requested start debug session with %s",
                        launch_variables )
 
@@ -381,6 +385,7 @@ class DebugSession( object ):
       self._logger.info( 'Adapter: %s',
                          json.dumps( self._adapter ) )
 
+      self._no_debug = self._configuration[ 'configuration' ].get( 'noDebug', False )
       if not self._uiTab:
         self._SetUpUI()
       else:
@@ -394,17 +399,20 @@ class DebugSession( object ):
 
       self._Initialise()
 
-      self._stackTraceView.ConnectionUp( self._connection )
-      self._variablesView.ConnectionUp( self._connection )
+      if self._stackTraceView is not None:
+        self._stackTraceView.ConnectionUp( self._connection )
+      if self._variablesView is not None:
+        self._variablesView.ConnectionUp( self._connection )
+        if self._saved_variables_data:
+          self._variablesView.Load( self._saved_variables_data )
+          # TODO: clear it ?
+          # TODO: store this stuff in module scope in variables.py ?
+          # TODO: hmmm...
 
-      if self._saved_variables_data:
-        self._variablesView.Load( self._saved_variables_data )
-        # TODO: clear it ?
-        # TODO: store this stuff in module scope in variables.py ?
-        # TODO: hmmm...
-
-      self._outputView.ConnectionUp( self._connection )
-      self._breakpoints.ConnectionUp( self._connection )
+      if self._outputView is not None:
+        self._outputView.ConnectionUp( self._connection )
+      if self._breakpoints is not None:
+        self._breakpoints.ConnectionUp( self._connection )
 
     if self._connection:
       self._logger.debug( "_StopDebugAdapter with callback: start" )
@@ -936,8 +944,10 @@ class DebugSession( object ):
                           mode )
 
     if mode == 'vertical':
+      self._logger.info('---- _SetUpUIVertical')
       self._SetUpUIVertical()
     else:
+      self._logger.info('---- _SetUpUIHorizontal')
       self._SetUpUIHorizontal()
 
 
@@ -1009,55 +1019,59 @@ class DebugSession( object ):
                                     self._render_emitter,
                                     self._breakpoints.IsBreakpointPresentAt )
 
-    # Call stack
-    vim.command(
-      f'topleft { settings.Int( "topbar_height" ) }new' )
-    stack_trace_window = vim.current.window
-    one_third = int( vim.eval( 'winwidth( 0 )' ) ) / 3
-    self._stackTraceView = stack_trace.StackTraceView( self,
+    windows = {}
+    if not self._no_debug:
+      # Call stack
+      vim.command(
+        f'topleft { settings.Int( "topbar_height" ) }new' )
+      stack_trace_window = vim.current.window
+      one_third = int( vim.eval( 'winwidth( 0 )' ) ) / 3
+      self._stackTraceView = stack_trace.StackTraceView( self,
                                                        stack_trace_window )
+      windows['stack_trace'] = utils.WindowID( stack_trace_window, self._uiTab )
 
 
-    # Watches
-    vim.command( 'leftabove vertical new' )
-    watch_window = vim.current.window
+      # Watches
+      vim.command( 'leftabove vertical new' )
+      watch_window = vim.current.window
+      windows['watches'] = utils.WindowID( watch_window, self._uiTab )
 
-    # Variables
-    vim.command( 'leftabove vertical new' )
-    vars_window = vim.current.window
+      # Variables
+      vim.command( 'leftabove vertical new' )
+      vars_window = vim.current.window
+      windows['variables'] = utils.WindowID( vars_window, self._uiTab )
 
 
-    with utils.LetCurrentWindow( vars_window ):
-      vim.command( f'{ one_third }wincmd |' )
-    with utils.LetCurrentWindow( watch_window ):
-      vim.command( f'{ one_third }wincmd |' )
-    with utils.LetCurrentWindow( stack_trace_window ):
-      vim.command( f'{ one_third }wincmd |' )
+      with utils.LetCurrentWindow( vars_window ):
+        vim.command( f'{ one_third }wincmd |' )
+      with utils.LetCurrentWindow( watch_window ):
+        vim.command( f'{ one_third }wincmd |' )
+      with utils.LetCurrentWindow( stack_trace_window ):
+        vim.command( f'{ one_third }wincmd |' )
 
-    self._variablesView = variables.VariablesView( vars_window, watch_window )
+      self._variablesView = variables.VariablesView( vars_window, watch_window )
 
 
     # Output/logging
     vim.current.window = code_window
-    vim.command( f'rightbelow { settings.Int( "bottombar_height" ) }new' )
-    output_window = vim.current.window
-    self._outputView = output.DAPOutputView( output_window,
-                                             self._api_prefix )
+    if not self._no_debug:
+      vim.command( f'rightbelow { settings.Int( "bottombar_height" ) }new' )
+      output_window = vim.current.window
+      self._outputView = output.DAPOutputView( output_window,
+                                               self._api_prefix )
+      windows['output'] = utils.WindowID( output_window, self._uiTab )
 
     # TODO: If/when we support multiple sessions, we'll need some way to
     # indicate which tab was created and store all the tabs
-    utils.SetSessionWindows( {
+    windows.update( {
       'mode': 'vertical',
       'tabpage': self._uiTab.number,
       'code': utils.WindowID( code_window, self._uiTab ),
-      'stack_trace': utils.WindowID( stack_trace_window, self._uiTab ),
-      'variables': utils.WindowID( vars_window, self._uiTab ),
-      'watches': utils.WindowID( watch_window, self._uiTab ),
-      'output': utils.WindowID( output_window, self._uiTab ),
       'eval': None, # updated every time eval popup is opened
       'breakpoints': vim.vars[ 'vimspector_session_windows' ].get(
         'breakpoints' ) # same as above, but for breakpoints
     } )
+    utils.SetSessionWindows(windows)
     with utils.RestoreCursorPosition():
       with utils.RestoreCurrentWindow():
         with utils.RestoreCurrentBuffer( vim.current.window ):
@@ -1070,7 +1084,7 @@ class DebugSession( object ):
 
   @RequiresUI()
   def SetCurrentFrame( self, frame, reason = '' ):
-    if not frame:
+    if not frame and not self._no_debug:
       self._stackTraceView.Clear()
       self._variablesView.Clear()
 
@@ -1081,16 +1095,18 @@ class DebugSession( object ):
     # countained a valid source
     assert frame
     if self._codeView.current_syntax not in ( 'ON', 'OFF' ):
-      self._variablesView.SetSyntax( self._codeView.current_syntax )
-      self._stackTraceView.SetSyntax( self._codeView.current_syntax )
-    else:
+      if not self._no_debug:
+        self._variablesView.SetSyntax( self._codeView.current_syntax )
+        self._stackTraceView.SetSyntax( self._codeView.current_syntax )
+    elif not self._no_debug:
       self._variablesView.SetSyntax( None )
       self._stackTraceView.SetSyntax( None )
 
-    self._variablesView.LoadScopes( frame )
-    self._variablesView.EvaluateWatches( frame )
+    if not self._no_debug:
+      self._variablesView.LoadScopes( frame )
+      self._variablesView.EvaluateWatches( frame )
 
-    if reason == 'stopped':
+    if reason == 'stopped' and not self._no_debug:
       self._breakpoints.ClearTemporaryBreakpoint( frame[ 'source' ][ 'path' ],
                                                   frame[ 'line' ] )
 
@@ -1443,8 +1459,10 @@ class DebugSession( object ):
     #
     def handle_initialize_response( msg ):
       self._server_capabilities = msg.get( 'body' ) or {}
-      self._breakpoints.SetServerCapabilities( self._server_capabilities )
-      self._variablesView.SetServerCapabilities( self._server_capabilities )
+      if self._breakpoints is not None:
+        self._breakpoints.SetServerCapabilities( self._server_capabilities )
+      if self._variablesView is not None:
+        self._variablesView.SetServerCapabilities( self._server_capabilities )
       self._Launch()
 
     self._connection.DoRequest( handle_initialize_response, {
@@ -1653,13 +1671,22 @@ class DebugSession( object ):
       self._logger.debug( 'Defaulting working directory to %s',
                           params[ 'cwd' ] )
 
-    term_id = self._codeView.LaunchTerminal( params )
+    # {'kind': 'external', 'title': 'Java Process Console', 'args': ['/Users/xmx/.asdf/installs/java/adopt-openjdk-11.0.6+10/bin/java', '@/var/folders/hn/xjbm0qc14zb0mt18jwhwbcnw0000gn/T/cp_2bcog19fzcx5hd4u38osaowti.argfile', 'com.fqhr.Application']}
+    response = {}
+    self._logger.info(params.get('kind'))
+    self._logger.info(params['kind'])
+    if params.get('kind') == 'external':
+      utils.Call(
+        'vimspector#internal#tmux#Send',
+        params['args'])
+    else:
+      term_id = self._codeView.LaunchTerminal( params )
 
-    response = {
-      'processId': int( utils.Call(
-        'vimspector#internal#{}term#GetPID'.format( self._api_prefix ),
-        term_id ) )
-    }
+      response = {
+        'processId': int( utils.Call(
+          'vimspector#internal#{}term#GetPID'.format( self._api_prefix ),
+          term_id ) )
+      }
 
     self._connection.DoResponse( message, None, response )
 
